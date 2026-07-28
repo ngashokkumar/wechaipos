@@ -347,6 +347,8 @@
 
   /* ===== Report ===== */
   .metrics{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); gap:16px; margin-bottom:22px; }
+  .report-summary-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:18px; align-items:start; }
+  .report-summary-grid .card{ margin-bottom:0 !important; }
   .metric-card{ padding:18px; }
   .metric-card .lbl{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); font-weight:600; margin-bottom:8px;}
   .metric-card .val{ font-family:'Fraunces',serif; font-size:28px; font-weight:600; color:var(--ink); }
@@ -641,6 +643,8 @@
   @media (max-width: 980px){
     .pos-layout{ grid-template-columns:1fr; }
     .editor-grid{ grid-template-columns:1fr; }
+    .report-summary-grid{ grid-template-columns:1fr; }
+    .report-summary-grid .card{ margin-bottom:0 !important; }
   }
 
   #itemFormCard{ transition: box-shadow .25s ease, border-color .25s ease; }
@@ -705,6 +709,8 @@
     }
 
     .editor-grid{ grid-template-columns:1fr; gap:16px; }
+    .report-summary-grid{ grid-template-columns:1fr; gap:16px; }
+    .report-summary-grid .card{ margin-bottom:0 !important; }
     #saveItemBtn{ grid-column:1 / -1; }
     .editor-grid > div > .card > div[style*="grid-template-columns:2fr"]{
       grid-template-columns: 1fr 1fr !important;
@@ -885,6 +891,22 @@
           <div class="lbl">Average Order Value</div>
           <div class="val" id="metricAvg">₹0.00</div>
         </div>
+        <div class="card metric-card">
+          <div class="lbl">Items Sold</div>
+          <div class="val" id="metricItemsSold">0</div>
+        </div>
+        <div class="card metric-card">
+          <div class="lbl">Discount Given</div>
+          <div class="val" id="metricDiscount">₹0.00</div>
+        </div>
+        <div class="card metric-card">
+          <div class="lbl">Tax Collected</div>
+          <div class="val" id="metricTax">₹0.00</div>
+        </div>
+        <div class="card metric-card accent" style="grid-column: span 2;">
+          <div class="lbl">Best Seller</div>
+          <div class="val" id="metricBestSeller" style="font-size:20px;">—</div>
+        </div>
       </div>
 
       <div class="card pad-lg" style="margin-bottom:18px;">
@@ -904,15 +926,29 @@
         <div class="filter-error" id="filterError"></div>
       </div>
 
-      <div class="card pad-lg" style="margin-bottom:18px;">
-        <h2 style="font-size:15px;margin:0 0 14px 0;">Item-wise sales (selected range)</h2>
-        <div class="scroll-x">
-          <table>
-            <thead>
-              <tr><th>Item</th><th>Category</th><th>Qty Sold</th><th>Revenue</th></tr>
-            </thead>
-            <tbody id="itemSummaryTableBody"></tbody>
-          </table>
+      <div class="report-summary-grid">
+        <div class="card pad-lg" style="margin-bottom:18px;">
+          <h2 style="font-size:15px;margin:0 0 14px 0;">Item-wise sales (selected range)</h2>
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr><th>Item</th><th>Category</th><th>Qty Sold</th><th>Revenue</th></tr>
+              </thead>
+              <tbody id="itemSummaryTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card pad-lg" style="margin-bottom:18px;">
+          <h2 style="font-size:15px;margin:0 0 14px 0;">Category-wise sales (selected range)</h2>
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr><th>Category</th><th>Qty Sold</th><th>Revenue</th><th>% of Revenue</th></tr>
+              </thead>
+              <tbody id="categorySummaryTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1808,6 +1844,47 @@ function renderItemSummaryTable(filtered){
   });
 }
 
+function renderCategorySummaryTable(filtered){
+  const body = document.getElementById('categorySummaryTableBody');
+  body.innerHTML = '';
+
+  if(filtered.length === 0){
+    body.innerHTML = '<tr><td colspan="4" class="empty-note">No orders in this range.</td></tr>';
+    return;
+  }
+
+  const summary = {}; // category -> { qty, revenue }
+  let totalRevenue = 0;
+
+  filtered.forEach(tx => {
+    tx.items.forEach(i => {
+      const itemDef = items.find(it => it.id === i.id);
+      const category = itemDef ? itemDef.category : 'Uncategorized';
+      const lineRevenue = i.price * i.qty;
+      if(!summary[category]) summary[category] = { qty: 0, revenue: 0 };
+      summary[category].qty += i.qty;
+      summary[category].revenue += lineRevenue;
+      totalRevenue += lineRevenue;
+    });
+  });
+
+  const catRows = Object.entries(summary)
+    .map(([category, v]) => ({ category, ...v }))
+    .sort((a,b) => b.revenue - a.revenue);
+
+  catRows.forEach(r => {
+    const pct = totalRevenue > 0 ? (r.revenue / totalRevenue * 100) : 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="tag">${escapeHtml(r.category)}</span></td>
+      <td class="mono" style="font-weight:600;">${r.qty}</td>
+      <td class="mono">${money(r.revenue)}</td>
+      <td class="mono">${pct.toFixed(1)}%</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
 function renderReport(){
   const filtered = getFilteredTransactions();
 
@@ -1815,11 +1892,41 @@ function renderReport(){
   const orderCount = filtered.length;
   const avg = orderCount ? revenue / orderCount : 0;
 
+  let itemsSold = 0;
+  let totalDiscount = 0;
+  let totalTax = 0;
+  const bestSellerTally = {}; // name -> qty
+
+  filtered.forEach(tx => {
+    const discountAmt = tx.subtotal * tx.discountPct / 100;
+    const afterDiscount = tx.subtotal - discountAmt;
+    const taxAmt = afterDiscount * tx.taxPct / 100;
+    totalDiscount += discountAmt;
+    totalTax += taxAmt;
+
+    tx.items.forEach(i => {
+      itemsSold += i.qty;
+      bestSellerTally[i.name] = (bestSellerTally[i.name] || 0) + i.qty;
+    });
+  });
+
+  let bestSellerText = '—';
+  const bestSellerEntries = Object.entries(bestSellerTally).sort((a,b) => b[1] - a[1]);
+  if(bestSellerEntries.length > 0){
+    const [name, qty] = bestSellerEntries[0];
+    bestSellerText = `${name} (${qty} sold)`;
+  }
+
   document.getElementById('metricRevenue').textContent = money(revenue);
   document.getElementById('metricOrders').textContent = orderCount.toLocaleString('en-IN');
   document.getElementById('metricAvg').textContent = money(avg);
+  document.getElementById('metricItemsSold').textContent = itemsSold.toLocaleString('en-IN');
+  document.getElementById('metricDiscount').textContent = money(totalDiscount);
+  document.getElementById('metricTax').textContent = money(totalTax);
+  document.getElementById('metricBestSeller').textContent = bestSellerText;
 
   renderItemSummaryTable(filtered);
+  renderCategorySummaryTable(filtered);
 
   const body = document.getElementById('reportTableBody');
   body.innerHTML = '';
