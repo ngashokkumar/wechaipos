@@ -11,7 +11,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  // Fallback: if the primary CDN above was blocked (ad blocker, network policy, offline CDN),
+  // try a second CDN so Excel export still works.
+  window.addEventListener('load', function(){
+    if(typeof XLSX === 'undefined'){
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      document.head.appendChild(s);
+    }
+  });
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
@@ -1810,15 +1821,7 @@ function getFilteredTransactions(){
   });
 }
 
-function renderItemSummaryTable(filtered){
-  const body = document.getElementById('itemSummaryTableBody');
-  body.innerHTML = '';
-
-  if(filtered.length === 0){
-    body.innerHTML = '<tr><td colspan="4" class="empty-note">No orders in this range.</td></tr>';
-    return;
-  }
-
+function computeItemSummary(filtered){
   const summary = {}; // itemId -> { name, category, qty, revenue }
   filtered.forEach(tx => {
     tx.items.forEach(i => {
@@ -1829,8 +1832,45 @@ function renderItemSummaryTable(filtered){
       summary[i.id].revenue += i.price * i.qty;
     });
   });
+  return Object.values(summary).sort((a,b) => b.qty - a.qty);
+}
 
-  const rows = Object.values(summary).sort((a,b) => b.qty - a.qty);
+function computeCategorySummary(filtered){
+  const summary = {}; // category -> { qty, revenue }
+  let totalRevenue = 0;
+
+  filtered.forEach(tx => {
+    tx.items.forEach(i => {
+      const itemDef = items.find(it => it.id === i.id);
+      const category = itemDef ? itemDef.category : 'Uncategorized';
+      const lineRevenue = i.price * i.qty;
+      if(!summary[category]) summary[category] = { qty: 0, revenue: 0 };
+      summary[category].qty += i.qty;
+      summary[category].revenue += lineRevenue;
+      totalRevenue += lineRevenue;
+    });
+  });
+
+  return Object.entries(summary)
+    .map(([category, v]) => ({
+      category,
+      qty: v.qty,
+      revenue: v.revenue,
+      pct: totalRevenue > 0 ? (v.revenue / totalRevenue * 100) : 0
+    }))
+    .sort((a,b) => b.revenue - a.revenue);
+}
+
+function renderItemSummaryTable(filtered){
+  const body = document.getElementById('itemSummaryTableBody');
+  body.innerHTML = '';
+
+  if(filtered.length === 0){
+    body.innerHTML = '<tr><td colspan="4" class="empty-note">No orders in this range.</td></tr>';
+    return;
+  }
+
+  const rows = computeItemSummary(filtered);
 
   rows.forEach(r => {
     const tr = document.createElement('tr');
@@ -1853,33 +1893,15 @@ function renderCategorySummaryTable(filtered){
     return;
   }
 
-  const summary = {}; // category -> { qty, revenue }
-  let totalRevenue = 0;
-
-  filtered.forEach(tx => {
-    tx.items.forEach(i => {
-      const itemDef = items.find(it => it.id === i.id);
-      const category = itemDef ? itemDef.category : 'Uncategorized';
-      const lineRevenue = i.price * i.qty;
-      if(!summary[category]) summary[category] = { qty: 0, revenue: 0 };
-      summary[category].qty += i.qty;
-      summary[category].revenue += lineRevenue;
-      totalRevenue += lineRevenue;
-    });
-  });
-
-  const catRows = Object.entries(summary)
-    .map(([category, v]) => ({ category, ...v }))
-    .sort((a,b) => b.revenue - a.revenue);
+  const catRows = computeCategorySummary(filtered);
 
   catRows.forEach(r => {
-    const pct = totalRevenue > 0 ? (r.revenue / totalRevenue * 100) : 0;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="tag">${escapeHtml(r.category)}</span></td>
       <td class="mono" style="font-weight:600;">${r.qty}</td>
       <td class="mono">${money(r.revenue)}</td>
-      <td class="mono">${pct.toFixed(1)}%</td>
+      <td class="mono">${r.pct.toFixed(1)}%</td>
     `;
     body.appendChild(tr);
   });
@@ -2030,21 +2052,85 @@ function getReportRows(filtered){
 }
 
 document.getElementById('exportBtn').addEventListener('click', () => {
+  if(typeof XLSX === 'undefined'){
+    showToast('Excel library failed to load — check your internet connection and try again');
+    return;
+  }
   const filtered = getFilteredTransactions();
   if(filtered.length === 0){ showToast('No data to export'); return; }
 
-  const rows = getReportRows(filtered);
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [
-    { wch: 16 }, { wch: 20 }, { wch: 40 }, { wch: 8 },
-    { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }
-  ];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
+  const sheetsAdded = [];
+  const sheetsFailed = [];
 
-  const fname = 'cafe_sales_report_' + new Date().toISOString().slice(0,10) + '.xlsx';
-  XLSX.writeFile(wb, fname);
-  showToast('Exported ' + fname);
+  /* Sheet 1: Sales Report (all transactions) */
+  try {
+    const rows = getReportRows(filtered);
+    const wsOrders = XLSX.utils.json_to_sheet(rows);
+    wsOrders['!cols'] = [
+      { wch: 16 }, { wch: 20 }, { wch: 40 }, { wch: 8 },
+      { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsOrders, 'Sales Report');
+    sheetsAdded.push('Sales Report');
+  } catch(err){
+    sheetsFailed.push('Sales Report');
+  }
+
+  /* Sheet 2: Item-wise Sales */
+  try {
+    const itemSummary = computeItemSummary(filtered);
+    const itemRows = itemSummary.length > 0
+      ? itemSummary.map(r => ({
+          'Item': r.name,
+          'Category': r.category,
+          'Qty Sold': r.qty,
+          'Revenue (INR)': round2(r.revenue)
+        }))
+      : [{ 'Item': '', 'Category': '', 'Qty Sold': '', 'Revenue (INR)': '' }];
+    const wsItems = XLSX.utils.json_to_sheet(itemRows);
+    wsItems['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 10 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, wsItems, 'Item-wise Sales');
+    sheetsAdded.push('Item-wise Sales');
+  } catch(err){
+    sheetsFailed.push('Item-wise Sales');
+  }
+
+  /* Sheet 3: Category-wise Sales */
+  try {
+    const catSummary = computeCategorySummary(filtered);
+    const catRows = catSummary.length > 0
+      ? catSummary.map(r => ({
+          'Category': r.category,
+          'Qty Sold': r.qty,
+          'Revenue (INR)': round2(r.revenue),
+          '% of Revenue': round2(r.pct)
+        }))
+      : [{ 'Category': '', 'Qty Sold': '', 'Revenue (INR)': '', '% of Revenue': '' }];
+    const wsCats = XLSX.utils.json_to_sheet(catRows);
+    wsCats['!cols'] = [{ wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, wsCats, 'Category-wise Sales');
+    sheetsAdded.push('Category-wise Sales');
+  } catch(err){
+    sheetsFailed.push('Category-wise Sales');
+  }
+
+  if(sheetsAdded.length === 0){
+    showToast('Could not generate the Excel file — try again');
+    return;
+  }
+
+  try {
+    const fname = 'cafe_sales_report_' + new Date().toISOString().slice(0,10) + '.xlsx';
+    XLSX.writeFile(wb, fname);
+    if(sheetsFailed.length > 0){
+      showToast('Exported ' + fname + ' — but ' + sheetsFailed.join(', ') + ' could not be included');
+    } else {
+      showToast('Exported ' + fname + ' (' + sheetsAdded.length + ' sheets: ' + sheetsAdded.join(', ') + ')');
+    }
+  } catch(err){
+    showToast('Could not save the Excel file — try again');
+  }
 });
 
 function csvEscape(val){
