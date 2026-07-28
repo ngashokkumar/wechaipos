@@ -359,6 +359,41 @@
   /* ===== Report ===== */
   .metrics{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); gap:16px; margin-bottom:22px; }
   .report-summary-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:18px; align-items:start; }
+
+  /* ===== Collapsible report sections ===== */
+  .report-section{ margin-bottom:18px; }
+  .report-summary-grid .report-section{ margin-bottom:0; }
+  .report-section-header{
+    display:flex; align-items:center; gap:8px;
+    width:100%;
+    background:none; border:none;
+    font-family:'Fraunces',serif;
+    font-size:15px; font-weight:600;
+    color:var(--accent-dark);
+    padding:8px 2px;
+    margin-bottom:8px;
+    cursor:pointer;
+    text-align:left;
+    user-select:none;
+  }
+  .report-section-header::after{ content:''; flex:1; height:1px; background:var(--border); }
+  .report-section-header .chev{
+    font-size:12px; color:var(--ink-faint);
+    transition:transform .2s ease;
+    flex-shrink:0;
+  }
+  .report-section.collapsed .report-section-header .chev{ transform:rotate(-90deg); }
+  .report-section.collapsed .report-section-header{ margin-bottom:0; }
+  .report-section-body{
+    overflow:hidden;
+    max-height:4000px;
+    transition:max-height .3s ease, opacity .25s ease;
+    opacity:1;
+  }
+  .report-section.collapsed .report-section-body{
+    max-height:0;
+    opacity:0;
+  }
   .report-summary-grid .card{ margin-bottom:0 !important; }
   .metric-card{ padding:18px; }
   .metric-card .lbl{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); font-weight:600; margin-bottom:8px;}
@@ -884,10 +919,16 @@
           <h1>Sales report</h1>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" id="reportExpandAllBtn">Expand All</button>
+          <button class="btn btn-ghost btn-sm" id="reportCollapseAllBtn">Collapse All</button>
           <button class="btn btn-ghost" id="exportCsvBtn">⬇ Export CSV</button>
           <button class="btn btn-sage" id="exportBtn">⬇ Export to Excel</button>
         </div>
       </div>
+
+      <div class="report-section" data-section="metrics">
+        <button class="report-section-header"><span class="chev">▾</span>Key Metrics</button>
+        <div class="report-section-body"><div class="report-section-inner">
 
       <div class="metrics">
         <div class="card metric-card accent">
@@ -920,6 +961,13 @@
         </div>
       </div>
 
+        </div></div>
+      </div>
+
+      <div class="report-section" data-section="filters">
+        <button class="report-section-header"><span class="chev">▾</span>Filters</button>
+        <div class="report-section-body"><div class="report-section-inner">
+
       <div class="card pad-lg" style="margin-bottom:18px;">
         <div class="filter-bar">
           <div class="field">
@@ -937,9 +985,15 @@
         <div class="filter-error" id="filterError"></div>
       </div>
 
+        </div></div>
+      </div>
+
       <div class="report-summary-grid">
+        <div class="report-section" data-section="itemwise">
+          <button class="report-section-header"><span class="chev">▾</span>Item-wise sales (selected range)</button>
+          <div class="report-section-body"><div class="report-section-inner">
+
         <div class="card pad-lg" style="margin-bottom:18px;">
-          <h2 style="font-size:15px;margin:0 0 14px 0;">Item-wise sales (selected range)</h2>
           <div class="scroll-x">
             <table>
               <thead>
@@ -950,8 +1004,14 @@
           </div>
         </div>
 
+          </div></div>
+        </div>
+
+        <div class="report-section" data-section="categorywise">
+          <button class="report-section-header"><span class="chev">▾</span>Category-wise sales (selected range)</button>
+          <div class="report-section-body"><div class="report-section-inner">
+
         <div class="card pad-lg" style="margin-bottom:18px;">
-          <h2 style="font-size:15px;margin:0 0 14px 0;">Category-wise sales (selected range)</h2>
           <div class="scroll-x">
             <table>
               <thead>
@@ -961,7 +1021,14 @@
             </table>
           </div>
         </div>
+
+          </div></div>
+        </div>
       </div>
+
+      <div class="report-section" data-section="transactions">
+        <button class="report-section-header"><span class="chev">▾</span>Transactions</button>
+        <div class="report-section-body"><div class="report-section-inner">
 
       <div class="card pad-lg">
         <div class="scroll-x">
@@ -975,6 +1042,9 @@
             <tbody id="reportTableBody"></tbody>
           </table>
         </div>
+      </div>
+
+        </div></div>
       </div>
     </section>
 
@@ -1907,6 +1977,55 @@ function renderCategorySummaryTable(filtered){
   });
 }
 
+/* ---------- collapsible report sections (persisted) ---------- */
+const LS_REPORT_COLLAPSED = 'cafe_report_collapsed_sections';
+let collapsedReportSections = new Set();
+
+function applyReportSectionStates(){
+  document.querySelectorAll('.report-section').forEach(sec => {
+    const name = sec.dataset.section;
+    sec.classList.toggle('collapsed', collapsedReportSections.has(name));
+  });
+}
+
+function loadReportCollapsedSections(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(LS_REPORT_COLLAPSED) || '[]');
+    collapsedReportSections = new Set(saved);
+  } catch(e){ collapsedReportSections = new Set(); }
+  applyReportSectionStates();
+}
+
+function saveReportCollapsedSections(){
+  localStorage.setItem(LS_REPORT_COLLAPSED, JSON.stringify([...collapsedReportSections]));
+}
+
+function toggleReportSection(name){
+  if(collapsedReportSections.has(name)) collapsedReportSections.delete(name);
+  else collapsedReportSections.add(name);
+  saveReportCollapsedSections();
+  applyReportSectionStates();
+}
+
+document.querySelectorAll('.report-section-header').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const section = btn.closest('.report-section');
+    if(section) toggleReportSection(section.dataset.section);
+  });
+});
+
+document.getElementById('reportExpandAllBtn').addEventListener('click', () => {
+  collapsedReportSections.clear();
+  saveReportCollapsedSections();
+  applyReportSectionStates();
+});
+
+document.getElementById('reportCollapseAllBtn').addEventListener('click', () => {
+  document.querySelectorAll('.report-section').forEach(sec => collapsedReportSections.add(sec.dataset.section));
+  saveReportCollapsedSections();
+  applyReportSectionStates();
+});
+
 function renderReport(){
   const filtered = getFilteredTransactions();
 
@@ -2208,6 +2327,7 @@ window.onload = function(){
   loadFontScale();
   loadCollapsedCats();
   loadCartView();
+  loadReportCollapsedSections();
   initDateLimits();
   renderPosMenu();
   renderCart();
