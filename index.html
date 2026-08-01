@@ -464,28 +464,8 @@
     font-size:15px; cursor:pointer; color:var(--ink);
   }
 
-  /* ===== Text size settings modal ===== */
-  .fs-backdrop{
-    display:none;
-    position:fixed; inset:0;
-    background:rgba(43,27,18,0.5);
-    z-index:110;
-  }
-  .fs-modal{
-    display:none;
-    position:fixed;
-    top:50%; left:50%;
-    transform:translate(-50%,-50%);
-    width:min(360px, calc(100vw - 40px));
-    background:var(--surface);
-    border-radius:var(--radius);
-    box-shadow:var(--shadow-lg);
-    padding:22px;
-    z-index:111;
-  }
-  .fs-modal h3{ margin:0 0 6px 0; font-size:18px; }
-  .fs-modal p{ margin:0 0 16px 0; font-size:13px; color:var(--ink-soft); line-height:1.45; }
-  .fs-options{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  /* ===== Text size options (used inline in Settings) ===== */
+  .fs-options{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:0; }
   .fs-options button{
     font-family:'DM Sans',sans-serif;
     font-weight:600;
@@ -500,9 +480,6 @@
   }
   .fs-options button:hover{ border-color:var(--accent); }
   .fs-options button.active{ border-color:var(--accent); background:var(--accent-tint); color:var(--accent-dark); }
-
-  body.fs-open .fs-backdrop,
-  body.fs-open .fs-modal{ display:block; }
 
   /* ===== Receipt / print bill modal ===== */
   .receipt-backdrop{
@@ -677,12 +654,38 @@
   .held-row-actions .btn{ flex:1; min-width:90px; }
 
   @media print{
+    @page{ size: 80mm auto; margin: 4mm; }
+    @page thermal-80{ size: 80mm auto; margin: 4mm; }
+    @page thermal-58{ size: 58mm auto; margin: 3mm; }
+    @page a4-sheet{ size: A4; margin: 15mm; }
+
+    html, body{ background:#fff; }
     body *{ visibility:hidden; }
     .receipt-paper, .receipt-paper *{ visibility:visible; }
+
     .receipt-paper{
-      position:absolute; top:0; left:50%;
-      transform:translateX(-50%);
+      position:absolute; top:0; left:0;
+      width:100%; max-width:100%;
+      margin:0; padding:0 2mm;
       box-shadow:none; border:none;
+      font-size:11px;
+      page: thermal-80;
+    }
+
+    /* 58mm thermal roll: narrower paper, smaller type */
+    body[data-print-width="58mm"] .receipt-paper{
+      font-size:9.5px;
+      page: thermal-58;
+    }
+
+    /* A4 sheet: center a normal-width receipt on the page */
+    body[data-print-width="A4"] .receipt-paper{
+      position:static;
+      max-width:340px;
+      margin:0 auto;
+      padding:10mm;
+      font-size:13px;
+      page: a4-sheet;
     }
   }
 
@@ -735,7 +738,7 @@
 
     /* Cart becomes an off-canvas bottom drawer that stops above the nav bar */
     .pos-layout{ display:block; }
-    .cart-fab{ display:flex; }
+    body[data-active-view="pos"] .cart-fab{ display:flex; }
     .cart-panel{
       position:fixed; left:0; right:0;
       bottom: calc(64px + env(safe-area-inset-bottom));
@@ -777,14 +780,14 @@
   }
 </style>
 </head>
-<body>
+<body data-active-view="pos">
 
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark">☕</div>
       <div class="brand-text">
-        <div class="name">We Chai</div>
+        <div class="name" id="brandName">We Chai</div>
         <div class="sub">Front of House</div>
       </div>
     </div>
@@ -792,7 +795,7 @@
       <button class="nav-btn active" data-view="pos"><span class="ic">🧾</span><span class="lbl">Billing</span></button>
       <button class="nav-btn" data-view="menu"><span class="ic">🍽️</span><span class="lbl">Menu Editor</span></button>
       <button class="nav-btn" data-view="report"><span class="ic">📊</span><span class="lbl">Sales Report</span></button>
-      <button class="nav-btn" id="textSizeNavBtn"><span class="ic">🔠</span><span class="lbl">Text Size</span></button>
+      <button class="nav-btn" data-view="settings"><span class="ic">⚙️</span><span class="lbl">Settings</span></button>
     </nav>
     <div class="sidebar-foot">Data saved locally in this browser.</div>
   </aside>
@@ -921,7 +924,6 @@
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button class="btn btn-ghost btn-sm" id="reportExpandAllBtn">Expand All</button>
           <button class="btn btn-ghost btn-sm" id="reportCollapseAllBtn">Collapse All</button>
-          <button class="btn btn-ghost" id="exportCsvBtn">⬇ Export CSV</button>
           <button class="btn btn-sage" id="exportBtn">⬇ Export to Excel</button>
         </div>
       </div>
@@ -1048,6 +1050,53 @@
       </div>
     </section>
 
+    <!-- ===================== SETTINGS VIEW ===================== -->
+    <section id="view-settings" class="view">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Preferences</span>
+          <h1>Settings</h1>
+        </div>
+      </div>
+
+      <div class="card pad-lg" style="margin-bottom:20px; max-width:520px;">
+        <h2 style="font-size:15px;margin:0 0 6px 0;">Shop details</h2>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 16px 0; line-height:1.5;">
+          This name appears in the sidebar and on every printed or saved bill.
+        </p>
+        <div class="field" style="margin-bottom:16px;">
+          <label for="shopNameInput">Shop title</label>
+          <input type="text" id="shopNameInput" placeholder="e.g. We Chai">
+        </div>
+        <button class="btn btn-primary" id="shopNameSaveBtn">Save Shop Title</button>
+      </div>
+
+      <div class="card pad-lg" style="margin-bottom:20px; max-width:520px;">
+        <h2 style="font-size:15px;margin:0 0 6px 0;">Printer settings</h2>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 16px 0; line-height:1.5;">
+          Choose the paper your printer uses. This shapes how receipts are laid out for both Print and Save as Image.
+        </p>
+        <div class="fs-options" id="printWidthOptions">
+          <button data-width="58mm">58mm Thermal</button>
+          <button data-width="80mm">80mm Thermal</button>
+          <button data-width="A4" style="grid-column: span 2;">A4 Sheet</button>
+        </div>
+      </div>
+
+      <div class="card pad-lg" style="max-width:520px;">
+        <h2 style="font-size:15px;margin:0 0 6px 0;">Text size</h2>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 16px 0; line-height:1.5;">
+          Make the whole app bigger or smaller — handy for reading the register in bright light.
+        </p>
+        <div class="fs-options">
+          <button data-scale="0.9">Small</button>
+          <button data-scale="1">Default</button>
+          <button data-scale="1.15">Large</button>
+          <button data-scale="1.3">X-Large</button>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -1058,19 +1107,6 @@
   <span class="fab-left">🧾 <span id="fabCount">0 items</span></span>
   <span class="fab-total mono" id="fabTotal">₹0.00</span>
 </button>
-
-<div class="fs-backdrop" id="fsBackdrop"></div>
-<div class="fs-modal" id="fsModal">
-  <h3>Text size</h3>
-  <p>Make the whole app bigger or smaller — handy for reading the register in bright light.</p>
-  <div class="fs-options">
-    <button data-scale="0.9">Small</button>
-    <button data-scale="1">Default</button>
-    <button data-scale="1.15">Large</button>
-    <button data-scale="1.3">X-Large</button>
-  </div>
-  <button class="btn btn-ghost btn-block" id="fsCloseBtn">Close</button>
-</div>
 
 <div class="receipt-backdrop" id="receiptBackdrop"></div>
 <div class="receipt-modal" id="receiptModal">
@@ -1220,6 +1256,8 @@ document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('view-' + btn.dataset.view).classList.add('active');
+    document.body.dataset.activeView = btn.dataset.view;
+    if(btn.dataset.view !== 'pos') closeCartDrawer();
     if(btn.dataset.view === 'report') renderReport();
     if(btn.dataset.view === 'menu') renderMenuEditor();
     if(btn.dataset.view === 'pos') renderPosMenu();
@@ -1465,8 +1503,30 @@ function round2(n){ return Math.round(n * 100) / 100; }
 /* =========================================================
    RECEIPT / PRINT BILL
    ========================================================= */
-const SHOP_NAME = 'We Chai';
+const LS_SHOP_NAME = 'cafe_shop_name';
+const DEFAULT_SHOP_NAME = 'We Chai';
+let SHOP_NAME = DEFAULT_SHOP_NAME;
 let currentReceiptTx = null;
+
+function loadShopName(){
+  const saved = localStorage.getItem(LS_SHOP_NAME);
+  SHOP_NAME = saved && saved.trim() ? saved.trim() : DEFAULT_SHOP_NAME;
+  applyShopNameToUI();
+}
+
+function applyShopNameToUI(){
+  document.getElementById('brandName').textContent = SHOP_NAME;
+  document.getElementById('shopNameInput').value = SHOP_NAME;
+  document.title = SHOP_NAME + ' — POS';
+}
+
+document.getElementById('shopNameSaveBtn').addEventListener('click', () => {
+  const val = document.getElementById('shopNameInput').value.trim();
+  SHOP_NAME = val || DEFAULT_SHOP_NAME;
+  localStorage.setItem(LS_SHOP_NAME, SHOP_NAME);
+  applyShopNameToUI();
+  showToast('Shop title updated to "' + SHOP_NAME + '"');
+});
 
 document.getElementById('printBillBtn').addEventListener('click', () => {
   if(cart.length === 0){ showToast('Cart is empty — add items first'); return; }
@@ -2252,39 +2312,6 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   }
 });
 
-function csvEscape(val){
-  const s = String(val);
-  if(/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-  return s;
-}
-
-document.getElementById('exportCsvBtn').addEventListener('click', () => {
-  const filtered = getFilteredTransactions();
-  if(filtered.length === 0){ showToast('No data to export'); return; }
-
-  const rows = getReportRows(filtered);
-  const headers = Object.keys(rows[0]);
-  const lines = [
-    headers.map(csvEscape).join(','),
-    ...rows.map(r => headers.map(h => csvEscape(r[h])).join(','))
-  ];
-  const csvContent = lines.join('\r\n');
-
-  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const fname = 'cafe_sales_report_' + new Date().toISOString().slice(0,10) + '.csv';
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fname;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  showToast('Exported ' + fname);
-});
-
 /* ---------- helpers ---------- */
 function escapeHtml(str){
   const d = document.createElement('div');
@@ -2299,7 +2326,7 @@ const LS_FONT_SCALE = 'cafe_font_scale';
 function applyFontScale(scale){
   document.documentElement.style.zoom = scale;
   localStorage.setItem(LS_FONT_SCALE, scale);
-  document.querySelectorAll('.fs-options button').forEach(b => {
+  document.querySelectorAll('.fs-options button[data-scale]').forEach(b => {
     b.classList.toggle('active', parseFloat(b.dataset.scale) === scale);
   });
 }
@@ -2309,14 +2336,28 @@ function loadFontScale(){
   applyFontScale(!isNaN(saved) ? saved : 1);
 }
 
-function openFontSizeModal(){ document.body.classList.add('fs-open'); }
-function closeFontSizeModal(){ document.body.classList.remove('fs-open'); }
-
-document.getElementById('textSizeNavBtn').addEventListener('click', openFontSizeModal);
-document.getElementById('fsCloseBtn').addEventListener('click', closeFontSizeModal);
-document.getElementById('fsBackdrop').addEventListener('click', closeFontSizeModal);
-document.querySelectorAll('.fs-options button').forEach(btn => {
+document.querySelectorAll('.fs-options button[data-scale]').forEach(btn => {
   btn.addEventListener('click', () => applyFontScale(parseFloat(btn.dataset.scale)));
+});
+
+/* ---------- printer paper width (used for print + save-as-image layout) ---------- */
+const LS_PRINT_WIDTH = 'cafe_print_width';
+
+function applyPrintWidth(width){
+  document.body.dataset.printWidth = width;
+  localStorage.setItem(LS_PRINT_WIDTH, width);
+  document.querySelectorAll('#printWidthOptions button').forEach(b => {
+    b.classList.toggle('active', b.dataset.width === width);
+  });
+}
+
+function loadPrintWidth(){
+  const saved = localStorage.getItem(LS_PRINT_WIDTH);
+  applyPrintWidth(saved || '80mm');
+}
+
+document.querySelectorAll('#printWidthOptions button').forEach(btn => {
+  btn.addEventListener('click', () => applyPrintWidth(btn.dataset.width));
 });
 
 /* =========================================================
@@ -2324,7 +2365,9 @@ document.querySelectorAll('.fs-options button').forEach(btn => {
    ========================================================= */
 window.onload = function(){
   loadData();
+  loadShopName();
   loadFontScale();
+  loadPrintWidth();
   loadCollapsedCats();
   loadCartView();
   loadReportCollapsedSections();
