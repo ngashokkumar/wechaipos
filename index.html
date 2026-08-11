@@ -780,12 +780,10 @@
     .editor-grid{ grid-template-columns:1fr; gap:16px; }
     .report-summary-grid{ grid-template-columns:1fr; gap:16px; }
     .report-summary-grid .card{ margin-bottom:0 !important; }
-    #saveItemBtn{ grid-column:1 / -1; }
     .editor-grid > div > .card > div[style*="grid-template-columns:2fr"]{
-      grid-template-columns: 1fr 1fr !important;
+      grid-template-columns: 1fr !important;
     }
-    #expenseFormGrid{ grid-template-columns: 1fr 1fr !important; }
-    #saveExpenseBtn{ grid-column:1 / -1; }
+    #expenseFormGrid{ grid-template-columns: 1fr !important; }
 
     .filter-bar{ flex-direction:column; align-items:stretch; gap:10px; }
     .filter-bar .field{ min-width:0; }
@@ -793,6 +791,51 @@
 
     .metrics{ grid-template-columns:1fr 1fr; }
     .metric-card .val{ font-size:22px; }
+
+    /* ===== Tables become stacked cards on mobile ===== */
+    .tbl-cards{ border:none; }
+    .tbl-cards thead{ display:none; }
+    .tbl-cards, .tbl-cards tbody{ display:block; width:100%; }
+    .tbl-cards tr{
+      display:block;
+      background:var(--surface-2);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px 14px;
+      margin-bottom:10px;
+    }
+    .tbl-cards tr.empty-row{ background:none; border:none; padding:0; }
+    .tbl-cards td{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border:none;
+      padding:6px 0;
+      font-size:13px;
+      text-align:right;
+    }
+    .tbl-cards td::before{
+      content: attr(data-label);
+      font-weight:600;
+      color:var(--ink-soft);
+      font-size:10.5px;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+      text-align:left;
+      flex-shrink:0;
+    }
+    .tbl-cards td.order-items-cell{ text-align:right; max-width:none; }
+    .tbl-cards td.td-actions{
+      justify-content:flex-end;
+      padding-top:10px;
+      margin-top:4px;
+      border-top:1px dashed var(--border);
+    }
+    .tbl-cards td.td-actions::before{ content:none; }
+    .tbl-cards td.td-actions .row-actions{ width:100%; }
+    .tbl-cards td.td-actions .row-actions .btn{ flex:1; justify-content:center; }
+    .tbl-cards td.empty-note{ display:block; text-align:center; }
 
     input, select{ font-size:16px; } /* prevents iOS auto-zoom on focus */
   }
@@ -928,7 +971,7 @@
           <div class="card pad-lg">
             <h2 style="font-size:15px;margin:0 0 14px 0;">All items</h2>
             <div class="scroll-x">
-              <table>
+              <table class="tbl-cards">
                 <thead>
                   <tr><th>Item</th><th>Category</th><th>Price</th><th style="text-align:right;">Actions</th></tr>
                 </thead>
@@ -1023,7 +1066,7 @@
 
         <div class="card pad-lg" style="margin-bottom:18px;">
           <div class="scroll-x">
-            <table>
+            <table class="tbl-cards">
               <thead>
                 <tr><th>Item</th><th>Category</th><th>Qty Sold</th><th>Revenue</th></tr>
               </thead>
@@ -1041,7 +1084,7 @@
 
         <div class="card pad-lg" style="margin-bottom:18px;">
           <div class="scroll-x">
-            <table>
+            <table class="tbl-cards">
               <thead>
                 <tr><th>Category</th><th>Qty Sold</th><th>Revenue</th><th>% of Revenue</th></tr>
               </thead>
@@ -1060,7 +1103,7 @@
 
       <div class="card pad-lg">
         <div class="scroll-x">
-          <table>
+          <table class="tbl-cards">
             <thead>
               <tr>
                 <th>Order ID</th><th>Date / Time</th><th>Items</th><th>Qty</th>
@@ -2037,10 +2080,10 @@ function renderItemsTable(){
   items.slice().sort((a,b) => a.name.localeCompare(b.name)).forEach(it => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${escapeHtml(it.name)}</td>
-      <td><span class="tag">${escapeHtml(it.category)}</span></td>
-      <td class="mono">${money(it.price)}</td>
-      <td>
+      <td data-label="Item">${escapeHtml(it.name)}</td>
+      <td data-label="Category"><span class="tag">${escapeHtml(it.category)}</span></td>
+      <td data-label="Price" class="mono">${money(it.price)}</td>
+      <td class="td-actions">
         <div class="row-actions" style="justify-content:flex-end;">
           <button class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
           <button class="btn btn-danger btn-sm" data-act="del">Delete</button>
@@ -2518,10 +2561,10 @@ function renderItemSummaryTable(filtered){
   rows.forEach(r => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${escapeHtml(r.name)}</td>
-      <td><span class="tag">${escapeHtml(r.category)}</span></td>
-      <td class="mono" style="font-weight:600;">${r.qty}</td>
-      <td class="mono">${money(r.revenue)}</td>
+      <td data-label="Item">${escapeHtml(r.name)}</td>
+      <td data-label="Category"><span class="tag">${escapeHtml(r.category)}</span></td>
+      <td data-label="Qty Sold" class="mono" style="font-weight:600;">${r.qty}</td>
+      <td data-label="Revenue" class="mono">${money(r.revenue)}</td>
     `;
     body.appendChild(tr);
   });
@@ -2541,10 +2584,10 @@ function renderCategorySummaryTable(filtered){
   catRows.forEach(r => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><span class="tag">${escapeHtml(r.category)}</span></td>
-      <td class="mono" style="font-weight:600;">${r.qty}</td>
-      <td class="mono">${money(r.revenue)}</td>
-      <td class="mono">${r.pct.toFixed(1)}%</td>
+      <td data-label="Category"><span class="tag">${escapeHtml(r.category)}</span></td>
+      <td data-label="Qty Sold" class="mono" style="font-weight:600;">${r.qty}</td>
+      <td data-label="Revenue" class="mono">${money(r.revenue)}</td>
+      <td data-label="% of Revenue" class="mono">${r.pct.toFixed(1)}%</td>
     `;
     body.appendChild(tr);
   });
@@ -2670,15 +2713,15 @@ function renderReport(){
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="mono">${tx.id}</td>
-      <td>${dtStr}</td>
-      <td class="order-items-cell">${escapeHtml(itemsSummary)}</td>
-      <td>${qtyTotal}</td>
-      <td class="mono">${money(tx.subtotal)}</td>
-      <td class="mono">${tx.discountPct}%</td>
-      <td class="mono">${tx.taxPct}%</td>
-      <td class="mono" style="font-weight:600;">${money(tx.total)}</td>
-      <td><button class="btn btn-ghost btn-sm" data-act="receipt">🧾 View</button></td>
+      <td data-label="Order ID" class="mono">${tx.id}</td>
+      <td data-label="Date / Time">${dtStr}</td>
+      <td data-label="Items" class="order-items-cell">${escapeHtml(itemsSummary)}</td>
+      <td data-label="Qty">${qtyTotal}</td>
+      <td data-label="Subtotal" class="mono">${money(tx.subtotal)}</td>
+      <td data-label="Discount" class="mono">${tx.discountPct}%</td>
+      <td data-label="Tax" class="mono">${tx.taxPct}%</td>
+      <td data-label="Total" class="mono" style="font-weight:600;">${money(tx.total)}</td>
+      <td class="td-actions"><button class="btn btn-ghost btn-sm" data-act="receipt">🧾 View Receipt</button></td>
     `;
     tr.querySelector('[data-act="receipt"]').addEventListener('click', () => openReceiptModal(tx));
     body.appendChild(tr);
