@@ -113,6 +113,7 @@
     transition:background .15s ease, color .15s ease;
   }
   .nav-btn .ic{ font-size:17px; width:20px; text-align:center; }
+  .nav-btn .lbl-short{ display:none; }
   .nav-btn:hover{ background:rgba(245,239,228,0.08); }
   .nav-btn.active{ background:var(--accent); color:#fff; box-shadow:0 3px 10px rgba(184,118,62,0.35); }
 
@@ -464,18 +465,22 @@
     font-size:15px; cursor:pointer; color:var(--ink);
   }
 
-  /* ===== Text size options (used inline in Settings) ===== */
-  .fs-options{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:0; }
+  /* ===== Text size / printer options (used inline in Settings) ===== */
+  .fs-options{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:0; }
   .fs-options button{
+    flex:1 1 auto;
+    min-width:110px;
+    white-space:nowrap;
     font-family:'DM Sans',sans-serif;
     font-weight:600;
     font-size:13.5px;
-    padding:12px 10px;
+    padding:12px 14px;
     border-radius:10px;
     border:1.5px solid var(--border);
     background:var(--surface-2);
     color:var(--ink);
     cursor:pointer;
+    text-align:center;
     transition:border-color .15s ease, background .15s ease, color .15s ease;
   }
   .fs-options button:hover{ border-color:var(--accent); }
@@ -718,19 +723,34 @@
     }
     .brand{ display:none; }
     .sidebar-foot{ display:none; }
-    .nav{ flex-direction:row; justify-content:space-around; width:100%; gap:2px; }
+    .nav{ flex-direction:row; justify-content:space-around; width:100%; gap:0; }
     .nav-btn{
-      flex-direction:column; gap:3px;
-      padding:6px 4px;
+      flex-direction:column; gap:2px;
+      padding:6px 2px;
       border-radius:10px;
       flex:1;
+      min-width:0;
     }
-    .nav-btn .ic{ font-size:20px; }
-    .nav-btn .lbl{ font-size:10.5px; }
+    .nav-btn .ic{ font-size:19px; width:auto; }
+    .nav-btn .lbl-full{ display:none; }
+    .nav-btn .lbl-short{
+      display:block;
+      font-size:10px;
+      line-height:1.15;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:100%;
+    }
     .nav-btn.active{ box-shadow:none; }
 
-    .main{ padding:14px 14px 20px 14px; }
+    .main{ padding:14px 14px calc(96px + env(safe-area-inset-bottom)) 14px; }
     .page-head h1{ font-size:21px; }
+
+    /* Settings option buttons: one per row, guaranteed full-width, no squeezing */
+    .fs-options{ flex-direction:column; }
+    .fs-options button{ width:100%; min-width:0; flex:none; }
+    .card[style*="max-width:520px"]{ max-width:100% !important; }
 
     .item-grid{ grid-template-columns:repeat(auto-fill, minmax(104px,1fr)); gap:10px; }
     .item-card{ min-height:66px; padding:11px 10px; }
@@ -764,6 +784,8 @@
     .editor-grid > div > .card > div[style*="grid-template-columns:2fr"]{
       grid-template-columns: 1fr 1fr !important;
     }
+    #expenseFormGrid{ grid-template-columns: 1fr 1fr !important; }
+    #saveExpenseBtn{ grid-column:1 / -1; }
 
     .filter-bar{ flex-direction:column; align-items:stretch; gap:10px; }
     .filter-bar .field{ min-width:0; }
@@ -777,6 +799,9 @@
 
   @media (max-width: 380px){
     .metrics{ grid-template-columns:1fr; }
+    .nav-btn .ic{ font-size:17px; }
+    .nav-btn .lbl-short{ font-size:9px; }
+    .nav-btn{ padding:6px 1px; }
   }
 </style>
 </head>
@@ -792,10 +817,11 @@
       </div>
     </div>
     <nav class="nav">
-      <button class="nav-btn active" data-view="pos"><span class="ic">🧾</span><span class="lbl">Billing</span></button>
-      <button class="nav-btn" data-view="menu"><span class="ic">🍽️</span><span class="lbl">Menu Editor</span></button>
-      <button class="nav-btn" data-view="report"><span class="ic">📊</span><span class="lbl">Sales Report</span></button>
-      <button class="nav-btn" data-view="settings"><span class="ic">⚙️</span><span class="lbl">Settings</span></button>
+      <button class="nav-btn active" data-view="pos"><span class="ic">🧾</span><span class="lbl lbl-full">Billing</span><span class="lbl lbl-short">Billing</span></button>
+      <button class="nav-btn" data-view="menu"><span class="ic">🍽️</span><span class="lbl lbl-full">Menu Editor</span><span class="lbl lbl-short">Menu</span></button>
+      <button class="nav-btn" data-view="report"><span class="ic">📊</span><span class="lbl lbl-full">Sales Report</span><span class="lbl lbl-short">Reports</span></button>
+      <button class="nav-btn" data-view="expenses"><span class="ic">💵</span><span class="lbl lbl-full">Expenses</span><span class="lbl lbl-short">Expenses</span></button>
+      <button class="nav-btn" data-view="settings"><span class="ic">⚙️</span><span class="lbl lbl-full">Settings</span><span class="lbl lbl-short">Settings</span></button>
     </nav>
     <div class="sidebar-foot">Data saved locally in this browser.</div>
   </aside>
@@ -1050,6 +1076,156 @@
       </div>
     </section>
 
+    <!-- ===================== EXPENSES VIEW ===================== -->
+    <section id="view-expenses" class="view">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Shop Costs</span>
+          <h1>Expenses</h1>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" id="expExpandAllBtn">Expand All</button>
+          <button class="btn btn-ghost btn-sm" id="expCollapseAllBtn">Collapse All</button>
+          <button class="btn btn-sage" id="expExportBtn">⬇ Export to Excel</button>
+        </div>
+      </div>
+
+      <div class="report-section" data-section="exp-add">
+        <button class="report-section-header"><span class="chev">▾</span>Add Expense</button>
+        <div class="report-section-body"><div class="report-section-inner">
+
+      <div class="editor-grid">
+        <div>
+          <div class="card pad-lg" style="margin-bottom:20px;">
+            <h2 style="font-size:15px;margin:0 0 12px 0;">Add expense category</h2>
+            <div class="field">
+              <label for="newExpenseCategoryInput">Category name</label>
+              <input type="text" id="newExpenseCategoryInput" placeholder="e.g. Packaging">
+            </div>
+            <button class="btn btn-primary btn-block" id="addExpenseCategoryBtn">Add Category</button>
+            <div class="cat-list" id="expenseCategoryList"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card pad-lg" style="margin-bottom:20px;" id="expenseFormCard">
+            <h2 style="font-size:15px;margin:0 0 14px 0;" id="expenseFormTitle">Add expense</h2>
+            <div id="expenseFormGrid" style="display:grid; grid-template-columns:1.1fr 1.2fr 1.6fr 1fr auto; gap:12px; align-items:end;">
+              <div class="field" style="margin-bottom:0;">
+                <label for="expenseDateInput">Date</label>
+                <input type="date" id="expenseDateInput">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="expenseCategorySelect">Category</label>
+                <select id="expenseCategorySelect"></select>
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="expenseDescInput">Description</label>
+                <input type="text" id="expenseDescInput" placeholder="e.g. Milk delivery">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="expenseAmountInput">Amount (INR)</label>
+                <input type="number" id="expenseAmountInput" min="0" step="1" placeholder="0">
+              </div>
+              <button class="btn btn-primary" id="saveExpenseBtn">Add Expense</button>
+            </div>
+            <div id="cancelExpenseEditWrap" style="display:none; margin-top:10px;">
+              <button class="btn btn-ghost btn-sm" id="cancelExpenseEditBtn">Cancel edit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+        </div></div>
+      </div>
+
+      <div class="report-section" data-section="exp-filters">
+        <button class="report-section-header"><span class="chev">▾</span>Filters</button>
+        <div class="report-section-body"><div class="report-section-inner">
+
+      <div class="card pad-lg" style="margin-bottom:18px;">
+        <div class="filter-bar">
+          <div class="field">
+            <label for="expStartDate">Start date</label>
+            <input type="date" id="expStartDate">
+          </div>
+          <div class="field">
+            <label for="expEndDate">End date</label>
+            <input type="date" id="expEndDate">
+          </div>
+          <button class="btn btn-ghost" id="expApplyFilterBtn">Apply Filter</button>
+          <button class="btn btn-ghost" id="expResetFilterBtn">Reset</button>
+          <div class="filter-spacer"></div>
+        </div>
+        <div class="filter-error" id="expFilterError"></div>
+      </div>
+
+        </div></div>
+      </div>
+
+      <div class="report-section" data-section="exp-summary">
+        <button class="report-section-header"><span class="chev">▾</span>Summary</button>
+        <div class="report-section-body"><div class="report-section-inner">
+
+      <div class="metrics">
+        <div class="card metric-card accent">
+          <div class="lbl">Total Expenses</div>
+          <div class="val" id="expMetricTotal">₹0.00</div>
+        </div>
+        <div class="card metric-card">
+          <div class="lbl">Number of Expenses</div>
+          <div class="val" id="expMetricCount">0</div>
+        </div>
+        <div class="card metric-card">
+          <div class="lbl">Average Expense</div>
+          <div class="val" id="expMetricAvg">₹0.00</div>
+        </div>
+        <div class="card metric-card accent">
+          <div class="lbl">Net Profit (Revenue − Expenses)</div>
+          <div class="val" id="expMetricProfit">₹0.00</div>
+        </div>
+      </div>
+
+        </div></div>
+      </div>
+
+      <div class="report-section" data-section="exp-categorywise">
+        <button class="report-section-header"><span class="chev">▾</span>Category-wise expenses (selected range)</button>
+        <div class="report-section-body"><div class="report-section-inner">
+
+      <div class="card pad-lg" style="margin-bottom:18px;">
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Category</th><th>Count</th><th>Amount</th><th>% of Total</th></tr>
+            </thead>
+            <tbody id="expCategorySummaryTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+        </div></div>
+      </div>
+
+      <div class="report-section" data-section="exp-list">
+        <button class="report-section-header"><span class="chev">▾</span>All expenses</button>
+        <div class="report-section-body"><div class="report-section-inner">
+
+      <div class="card pad-lg">
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th style="text-align:right;">Actions</th></tr>
+            </thead>
+            <tbody id="expenseTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+        </div></div>
+      </div>
+    </section>
+
     <!-- ===================== SETTINGS VIEW ===================== -->
     <section id="view-settings" class="view">
       <div class="page-head">
@@ -1079,7 +1255,7 @@
         <div class="fs-options" id="printWidthOptions">
           <button data-width="58mm">58mm Thermal</button>
           <button data-width="80mm">80mm Thermal</button>
-          <button data-width="A4" style="grid-column: span 2;">A4 Sheet</button>
+          <button data-width="A4" style="flex-basis:100%;">A4 Sheet</button>
         </div>
       </div>
 
@@ -1165,14 +1341,20 @@ const LS_ITEMS = 'cafe_items';
 const LS_CATEGORIES = 'cafe_categories';
 const LS_TRANSACTIONS = 'cafe_transactions';
 const LS_HELD_ORDERS = 'cafe_held_orders';
+const LS_EXPENSES = 'cafe_expenses';
+const LS_EXPENSE_CATEGORIES = 'cafe_expense_categories';
 
 let categories = [];
 let items = [];
 let transactions = [];
 let heldOrders = []; // { id, label, datetime, items:[{itemId,name,price,qty}], discountPct, taxPct }
+let expenses = []; // { id, date, category, description, amount }
+let expenseCategories = [];
 let cart = []; // {itemId, name, price, qty}
 let editingItemId = null;
+let editingExpenseId = null;
 let reportFilter = { start: null, end: null };
+let expenseFilter = { start: null, end: null };
 
 /* ---------- persistence ---------- */
 function loadData(){
@@ -1180,6 +1362,8 @@ function loadData(){
   const i = localStorage.getItem(LS_ITEMS);
   const t = localStorage.getItem(LS_TRANSACTIONS);
   const h = localStorage.getItem(LS_HELD_ORDERS);
+  const e = localStorage.getItem(LS_EXPENSES);
+  const ec = localStorage.getItem(LS_EXPENSE_CATEGORIES);
 
   if(!c || !i){
     seedData();
@@ -1189,6 +1373,9 @@ function loadData(){
   }
   transactions = t ? JSON.parse(t) : [];
   heldOrders = h ? JSON.parse(h) : [];
+  expenses = e ? JSON.parse(e) : [];
+  expenseCategories = ec ? JSON.parse(ec) : ['Rent', 'Utilities', 'Ingredients & Supplies', 'Salaries', 'Maintenance', 'Other'];
+  if(!ec) saveExpenseCategories();
 }
 
 function seedData(){
@@ -1206,6 +1393,8 @@ function saveCategories(){ localStorage.setItem(LS_CATEGORIES, JSON.stringify(ca
 function saveItems(){ localStorage.setItem(LS_ITEMS, JSON.stringify(items)); }
 function saveTransactions(){ localStorage.setItem(LS_TRANSACTIONS, JSON.stringify(transactions)); }
 function saveHeldOrders(){ localStorage.setItem(LS_HELD_ORDERS, JSON.stringify(heldOrders)); }
+function saveExpenses(){ localStorage.setItem(LS_EXPENSES, JSON.stringify(expenses)); }
+function saveExpenseCategories(){ localStorage.setItem(LS_EXPENSE_CATEGORIES, JSON.stringify(expenseCategories)); }
 
 function uid(){ return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
 function orderId(){ return 'ORD-' + Date.now().toString(36).toUpperCase(); }
@@ -1261,6 +1450,7 @@ document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
     if(btn.dataset.view === 'report') renderReport();
     if(btn.dataset.view === 'menu') renderMenuEditor();
     if(btn.dataset.view === 'pos') renderPosMenu();
+    if(btn.dataset.view === 'expenses') renderExpensesView();
   });
 });
 
@@ -1934,6 +2124,329 @@ function deleteItem(id){
 }
 
 /* =========================================================
+   EXPENSES
+   ========================================================= */
+function renderExpensesView(){
+  renderExpenseCategoryList();
+  renderExpenseCategoryDropdown();
+  renderExpenseTable();
+  renderExpenseReport();
+}
+
+/* ---------- expense categories ---------- */
+function renderExpenseCategoryList(){
+  const wrap = document.getElementById('expenseCategoryList');
+  wrap.innerHTML = '';
+  if(expenseCategories.length === 0){
+    wrap.innerHTML = '<div class="empty-note">No categories yet.</div>';
+    return;
+  }
+  expenseCategories.forEach(cat => {
+    const count = expenses.filter(e => e.category === cat).length;
+    const pill = document.createElement('div');
+    pill.className = 'cat-pill';
+    pill.innerHTML = `<span>${escapeHtml(cat)}<span class="count">${count} expense${count === 1 ? '' : 's'}</span></span>`;
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-danger btn-sm';
+    delBtn.textContent = 'Delete';
+    delBtn.disabled = count > 0;
+    delBtn.title = count > 0 ? 'Remove or reassign expenses first' : 'Delete category';
+    delBtn.addEventListener('click', () => deleteExpenseCategory(cat));
+    pill.appendChild(delBtn);
+    wrap.appendChild(pill);
+  });
+}
+
+function renderExpenseCategoryDropdown(){
+  const sel = document.getElementById('expenseCategorySelect');
+  const prev = sel.value;
+  sel.innerHTML = expenseCategories.map(c => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
+  if(expenseCategories.includes(prev)) sel.value = prev;
+}
+
+document.getElementById('addExpenseCategoryBtn').addEventListener('click', () => {
+  const input = document.getElementById('newExpenseCategoryInput');
+  const name = input.value.trim();
+  if(!name){ showToast('Enter a category name'); return; }
+  if(expenseCategories.some(c => c.toLowerCase() === name.toLowerCase())){ showToast('That category already exists'); return; }
+  expenseCategories.push(name);
+  saveExpenseCategories();
+  input.value = '';
+  renderExpenseCategoryList();
+  renderExpenseCategoryDropdown();
+  showToast('Category added');
+});
+
+function deleteExpenseCategory(cat){
+  const inUse = expenses.some(e => e.category === cat);
+  if(inUse){ showToast('Cannot delete — expenses still use this category'); return; }
+  expenseCategories = expenseCategories.filter(c => c !== cat);
+  saveExpenseCategories();
+  renderExpenseCategoryList();
+  renderExpenseCategoryDropdown();
+  showToast('Category deleted');
+}
+
+/* ---------- expense CRUD ---------- */
+function renderExpenseTable(){
+  const body = document.getElementById('expenseTableBody');
+  body.innerHTML = '';
+  if(expenses.length === 0){
+    body.innerHTML = '<tr><td colspan="5" class="empty-note">No expenses logged yet.</td></tr>';
+    return;
+  }
+  expenses.slice().sort((a,b) => b.date.localeCompare(a.date)).forEach(exp => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(exp.date)}</td>
+      <td><span class="tag">${escapeHtml(exp.category)}</span></td>
+      <td>${escapeHtml(exp.description || '—')}</td>
+      <td class="mono">${money(exp.amount)}</td>
+      <td>
+        <div class="row-actions" style="justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
+          <button class="btn btn-danger btn-sm" data-act="del">Delete</button>
+        </div>
+      </td>
+    `;
+    tr.querySelector('[data-act="edit"]').addEventListener('click', () => startEditExpense(exp.id));
+    tr.querySelector('[data-act="del"]').addEventListener('click', () => deleteExpense(exp.id));
+    body.appendChild(tr);
+  });
+}
+
+document.getElementById('saveExpenseBtn').addEventListener('click', () => {
+  const date = document.getElementById('expenseDateInput').value;
+  const category = document.getElementById('expenseCategorySelect').value;
+  const description = document.getElementById('expenseDescInput').value.trim();
+  const amount = parseFloat(document.getElementById('expenseAmountInput').value);
+
+  if(!date){ showToast('Pick a date'); return; }
+  if(!category){ showToast('Add an expense category first'); return; }
+  if(isNaN(amount) || amount < 0){ showToast('Enter a valid amount'); return; }
+
+  if(editingExpenseId){
+    const exp = expenses.find(e => e.id === editingExpenseId);
+    exp.date = date; exp.category = category; exp.description = description; exp.amount = amount;
+    showToast('Expense updated');
+  } else {
+    expenses.push({ id: uid(), date, category, description, amount });
+    showToast('Expense added');
+  }
+  saveExpenses();
+  resetExpenseForm();
+  renderExpenseTable();
+  renderExpenseCategoryList();
+  renderExpenseReport();
+});
+
+function startEditExpense(id){
+  const exp = expenses.find(e => e.id === id);
+  if(!exp) return;
+  editingExpenseId = id;
+  document.getElementById('expenseFormTitle').textContent = 'Edit expense';
+  document.getElementById('expenseDateInput').value = exp.date;
+  document.getElementById('expenseCategorySelect').value = exp.category;
+  document.getElementById('expenseDescInput').value = exp.description || '';
+  document.getElementById('expenseAmountInput').value = exp.amount;
+  document.getElementById('saveExpenseBtn').textContent = 'Save Changes';
+  document.getElementById('cancelExpenseEditWrap').style.display = 'block';
+
+  const formCard = document.getElementById('expenseFormCard');
+  if(formCard.scrollIntoView) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  formCard.classList.add('form-highlight');
+  setTimeout(() => formCard.classList.remove('form-highlight'), 900);
+}
+
+document.getElementById('cancelExpenseEditBtn').addEventListener('click', resetExpenseForm);
+
+function resetExpenseForm(){
+  editingExpenseId = null;
+  document.getElementById('expenseFormTitle').textContent = 'Add expense';
+  document.getElementById('expenseDateInput').value = todayStr();
+  document.getElementById('expenseDescInput').value = '';
+  document.getElementById('expenseAmountInput').value = '';
+  document.getElementById('saveExpenseBtn').textContent = 'Add Expense';
+  document.getElementById('cancelExpenseEditWrap').style.display = 'none';
+}
+
+function deleteExpense(id){
+  const exp = expenses.find(e => e.id === id);
+  if(!exp) return;
+  showConfirm(
+    `Delete this ${exp.category} expense of ${money(exp.amount)}? This cannot be undone.`,
+    () => {
+      expenses = expenses.filter(e => e.id !== id);
+      saveExpenses();
+      if(editingExpenseId === id) resetExpenseForm();
+      renderExpenseTable();
+      renderExpenseCategoryList();
+      renderExpenseReport();
+      showToast('Expense deleted');
+    },
+    { title: 'Delete expense', confirmLabel: 'Delete' }
+  );
+}
+
+/* ---------- expense filtering + report ---------- */
+function getFilteredExpenses(){
+  return expenses.filter(exp => {
+    if(expenseFilter.start && exp.date < expenseFilter.start) return false;
+    if(expenseFilter.end && exp.date > expenseFilter.end) return false;
+    return true;
+  });
+}
+
+function getRevenueForRange(start, end){
+  return transactions.filter(tx => {
+    const d = tx.datetime.slice(0, 10);
+    if(start && d < start) return false;
+    if(end && d > end) return false;
+    return true;
+  }).reduce((s,t) => s + t.total, 0);
+}
+
+function computeExpenseCategorySummary(filtered){
+  const summary = {}; // category -> { count, amount }
+  let total = 0;
+  filtered.forEach(exp => {
+    if(!summary[exp.category]) summary[exp.category] = { count: 0, amount: 0 };
+    summary[exp.category].count += 1;
+    summary[exp.category].amount += exp.amount;
+    total += exp.amount;
+  });
+  return Object.entries(summary)
+    .map(([category, v]) => ({ category, count: v.count, amount: v.amount, pct: total > 0 ? (v.amount / total * 100) : 0 }))
+    .sort((a,b) => b.amount - a.amount);
+}
+
+function renderExpenseCategorySummaryTable(filtered){
+  const body = document.getElementById('expCategorySummaryTableBody');
+  body.innerHTML = '';
+  if(filtered.length === 0){
+    body.innerHTML = '<tr><td colspan="4" class="empty-note">No expenses in this range.</td></tr>';
+    return;
+  }
+  computeExpenseCategorySummary(filtered).forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="tag">${escapeHtml(r.category)}</span></td>
+      <td class="mono" style="font-weight:600;">${r.count}</td>
+      <td class="mono">${money(r.amount)}</td>
+      <td class="mono">${r.pct.toFixed(1)}%</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function renderExpenseReport(){
+  const filtered = getFilteredExpenses();
+  const total = filtered.reduce((s,e) => s + e.amount, 0);
+  const count = filtered.length;
+  const avg = count ? total / count : 0;
+  const revenue = getRevenueForRange(expenseFilter.start, expenseFilter.end);
+  const profit = revenue - total;
+
+  document.getElementById('expMetricTotal').textContent = money(total);
+  document.getElementById('expMetricCount').textContent = count.toLocaleString('en-IN');
+  document.getElementById('expMetricAvg').textContent = money(avg);
+  document.getElementById('expMetricProfit').textContent = money(profit);
+
+  renderExpenseCategorySummaryTable(filtered);
+}
+
+/* ---------- expense date filter validation ---------- */
+function initExpenseDateLimits(){
+  const today = todayStr();
+  document.getElementById('expStartDate').setAttribute('max', today);
+  document.getElementById('expEndDate').setAttribute('max', today);
+}
+
+function showExpenseFilterError(msg){
+  const el = document.getElementById('expFilterError');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('show');
+}
+function clearExpenseFilterError(){
+  document.getElementById('expFilterError').classList.remove('show');
+}
+
+document.getElementById('expStartDate').addEventListener('input', clearExpenseFilterError);
+document.getElementById('expEndDate').addEventListener('input', clearExpenseFilterError);
+
+document.getElementById('expApplyFilterBtn').addEventListener('click', () => {
+  const today = todayStr();
+  const startVal = document.getElementById('expStartDate').value;
+  const endVal = document.getElementById('expEndDate').value;
+
+  if(startVal && startVal > today){ showExpenseFilterError('Start date cannot be a future date.'); return; }
+  if(endVal && endVal > today){ showExpenseFilterError('End date cannot be a future date — pick today or an earlier date.'); return; }
+  if(startVal && endVal && endVal < startVal){ showExpenseFilterError('End date must be the same as or after the start date.'); return; }
+
+  clearExpenseFilterError();
+  expenseFilter.start = startVal || null;
+  expenseFilter.end = endVal || null;
+  renderExpenseReport();
+});
+
+document.getElementById('expResetFilterBtn').addEventListener('click', () => {
+  document.getElementById('expStartDate').value = '';
+  document.getElementById('expEndDate').value = '';
+  clearExpenseFilterError();
+  expenseFilter = { start: null, end: null };
+  renderExpenseReport();
+});
+
+/* ---------- expense Excel export ---------- */
+document.getElementById('expExportBtn').addEventListener('click', () => {
+  if(typeof XLSX === 'undefined'){
+    showToast('Excel library failed to load — check your internet connection and try again');
+    return;
+  }
+  const filtered = getFilteredExpenses();
+  if(filtered.length === 0){ showToast('No expenses to export'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const sheetsAdded = [];
+
+  try {
+    const rows = filtered.slice().sort((a,b) => b.date.localeCompare(a.date)).map(e => ({
+      'Date': e.date,
+      'Category': e.category,
+      'Description': e.description || '',
+      'Amount (INR)': round2(e.amount)
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 14 }, { wch: 20 }, { wch: 34 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
+    sheetsAdded.push('Expenses');
+  } catch(err){}
+
+  try {
+    const catRows = computeExpenseCategorySummary(filtered).map(r => ({
+      'Category': r.category,
+      'Count': r.count,
+      'Amount (INR)': round2(r.amount),
+      '% of Total': round2(r.pct)
+    }));
+    const ws2 = XLSX.utils.json_to_sheet(catRows);
+    ws2['!cols'] = [{ wch: 20 }, { wch: 10 }, { wch: 14 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Category-wise Expenses');
+    sheetsAdded.push('Category-wise Expenses');
+  } catch(err){}
+
+  if(sheetsAdded.length === 0){ showToast('Could not generate the Excel file — try again'); return; }
+
+  try {
+    const fname = 'cafe_expenses_' + new Date().toISOString().slice(0,10) + '.xlsx';
+    XLSX.writeFile(wb, fname);
+    showToast('Exported ' + fname + ' (' + sheetsAdded.length + ' sheets)');
+  } catch(err){
+    showToast('Could not save the Excel file — try again');
+  }
+});
+
+/* =========================================================
    SALES REPORT
    ========================================================= */
 function getFilteredTransactions(){
@@ -2075,13 +2588,25 @@ document.querySelectorAll('.report-section-header').forEach(btn => {
 });
 
 document.getElementById('reportExpandAllBtn').addEventListener('click', () => {
-  collapsedReportSections.clear();
+  document.querySelectorAll('#view-report .report-section').forEach(sec => collapsedReportSections.delete(sec.dataset.section));
   saveReportCollapsedSections();
   applyReportSectionStates();
 });
 
 document.getElementById('reportCollapseAllBtn').addEventListener('click', () => {
-  document.querySelectorAll('.report-section').forEach(sec => collapsedReportSections.add(sec.dataset.section));
+  document.querySelectorAll('#view-report .report-section').forEach(sec => collapsedReportSections.add(sec.dataset.section));
+  saveReportCollapsedSections();
+  applyReportSectionStates();
+});
+
+document.getElementById('expExpandAllBtn').addEventListener('click', () => {
+  document.querySelectorAll('#view-expenses .report-section').forEach(sec => collapsedReportSections.delete(sec.dataset.section));
+  saveReportCollapsedSections();
+  applyReportSectionStates();
+});
+
+document.getElementById('expCollapseAllBtn').addEventListener('click', () => {
+  document.querySelectorAll('#view-expenses .report-section').forEach(sec => collapsedReportSections.add(sec.dataset.section));
   saveReportCollapsedSections();
   applyReportSectionStates();
 });
@@ -2372,12 +2897,15 @@ window.onload = function(){
   loadCartView();
   loadReportCollapsedSections();
   initDateLimits();
+  initExpenseDateLimits();
+  resetExpenseForm();
   renderPosMenu();
   renderCart();
   updateCartFab();
   updateHeldOrdersBadge();
   renderMenuEditor();
   renderReport();
+  renderExpensesView();
 };
 </script>
 </body>
