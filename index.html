@@ -24,6 +24,7 @@
   });
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#F5EFE4;
@@ -40,10 +41,29 @@
     --rose:#A2453B;
     --rose-tint:#F3DEDA;
     --border:#E5D8C4;
-    --shadow: 0 2px 10px rgba(43,27,18,0.06), 0 1px 2px rgba(43,27,18,0.05);
-    --shadow-lg: 0 12px 28px rgba(43,27,18,0.14);
+    --shadow: 0 1px 2px rgba(43,27,18,0.07), 0 4px 10px rgba(43,27,18,0.05), 0 12px 24px rgba(43,27,18,0.05);
+    --shadow-lg: 0 2px 6px rgba(43,27,18,0.10), 0 16px 32px rgba(43,27,18,0.14), 0 32px 60px rgba(43,27,18,0.10);
     --radius: 14px;
   }
+  body.dark-mode{
+    --bg:#1B140F;
+    --surface:#271E17;
+    --surface-2:#211911;
+    --ink:#F2E8D9;
+    --ink-soft:#C3AF95;
+    --ink-faint:#8C7A63;
+    --accent:#DA9A5C;
+    --accent-dark:#EFC08A;
+    --accent-tint:#3B2C1C;
+    --sage:#9AAC81;
+    --sage-tint:#2B3324;
+    --rose:#E0958A;
+    --rose-tint:#3E2521;
+    --border:#40321F;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.28), 0 12px 24px rgba(0,0,0,0.22);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,0.4), 0 16px 32px rgba(0,0,0,0.38), 0 32px 60px rgba(0,0,0,0.3);
+  }
+  body{ transition: background-color .25s ease, color .25s ease; }
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{
@@ -93,6 +113,7 @@
     flex-shrink:0;
     box-shadow:0 3px 8px rgba(184,118,62,0.4);
   }
+  .brand-mark svg{ width:20px; height:20px; color:#fff; }
   .brand-text{ line-height:1.15; }
   .brand-text .name{ font-family:'Fraunces',serif; font-size:17px; font-weight:600; }
   .brand-text .sub{ font-size:11px; color:#C9B79F; letter-spacing:0.04em; text-transform:uppercase; }
@@ -110,11 +131,13 @@
     font-weight:500;
     cursor:pointer;
     text-align:left;
-    transition:background .15s ease, color .15s ease;
+    transition:background .15s ease, color .15s ease, transform .08s ease;
   }
-  .nav-btn .ic{ font-size:17px; width:20px; text-align:center; }
+  .nav-btn .ic{ font-size:17px; width:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; }
+  .nav-btn .ic svg{ width:18px; height:18px; }
   .nav-btn .lbl-short{ display:none; }
   .nav-btn:hover{ background:rgba(245,239,228,0.08); }
+  .nav-btn:active{ transform:scale(0.95); }
   .nav-btn.active{ background:var(--accent); color:#fff; box-shadow:0 3px 10px rgba(184,118,62,0.35); }
 
   .sidebar-foot{
@@ -198,7 +221,7 @@
     transition:border-color .15s ease, background .15s ease;
     width:100%;
   }
-  input:focus, select:focus{ border-color:var(--accent); background:#fff; box-shadow:0 0 0 3px var(--accent-tint); }
+  input:focus, select:focus{ border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 3px var(--accent-tint); }
   label{ font-size:12px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.03em; margin-bottom:6px; display:block; }
   .field{ margin-bottom:14px; }
 
@@ -229,6 +252,11 @@
     transition:transform .2s ease;
     flex-shrink:0;
   }
+  .cat-title .cat-dot{
+    width:9px; height:9px; border-radius:50%;
+    flex-shrink:0;
+    box-shadow:0 0 0 3px rgba(0,0,0,0.06);
+  }
   .cat-title .cat-count{
     font-family:'DM Sans',sans-serif;
     font-size:11.5px; font-weight:500;
@@ -255,6 +283,7 @@
   .item-card{
     background:var(--surface);
     border:1px solid var(--border);
+    border-left:4px solid var(--cat-color, var(--accent));
     border-radius:12px;
     padding:14px 12px;
     cursor:pointer;
@@ -262,8 +291,16 @@
     transition:transform .1s ease, box-shadow .15s ease, border-color .15s ease;
     display:flex; flex-direction:column; gap:6px;
     min-height:78px;
+    position:relative;
   }
-  .item-card:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lg); border-color:var(--accent); }
+  .item-card:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lg); border-color:var(--border); border-left-color:var(--cat-color, var(--accent)); }
+  .item-card:active{ transform:scale(0.96); transition:transform .08s ease; }
+  @keyframes itemAddPulse{
+    0%{ box-shadow:0 0 0 0 var(--cat-color, var(--accent)); }
+    55%{ box-shadow:0 0 0 10px transparent; }
+    100%{ box-shadow:0 0 0 0 transparent; }
+  }
+  .item-card.pulse{ animation:itemAddPulse .45s ease-out; }
   .item-card .nm{ font-weight:600; font-size:14px; line-height:1.25; }
   .item-card .pr{ font-family:'DM Mono',monospace; color:var(--accent-dark); font-size:13.5px; font-weight:500; }
   .empty-note{ color:var(--ink-faint); font-size:13.5px; padding:20px; text-align:center; }
@@ -277,6 +314,7 @@
   .cart-head{ display:flex; align-items:center; justify-content:space-between; padding:18px 18px 12px 18px; }
   .cart-head h2{ font-size:17px; margin:0; }
   .cart-items{ overflow-y:auto; padding:0 18px; flex:1; max-height: 320px; }
+  .cart-scroll-wrap{ display:contents; }
 
   .cart-summary-line{
     display:none;
@@ -321,7 +359,7 @@
 
   .toast{
     position:fixed; bottom:24px; right:24px;
-    background:var(--ink); color:#F5EFE4;
+    background:#2B1B12; color:#F5EFE4;
     padding:14px 20px; border-radius:12px;
     box-shadow:var(--shadow-lg);
     font-size:14px; font-weight:500;
@@ -421,8 +459,25 @@
   .scroll-x{ overflow-x:auto; }
 
   ::-webkit-scrollbar{ width:9px; height:9px; }
-  ::-webkit-scrollbar-thumb{ background:var(--ink-faint); border-radius:20px; }
+  ::-webkit-scrollbar-thumb{ background:var(--ink-faint); border-radius:20px; border:2px solid transparent; background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover{ background:var(--accent); background-clip:padding-box; }
   ::-webkit-scrollbar-track{ background:transparent; }
+  *{ scrollbar-width:thin; scrollbar-color:var(--ink-faint) transparent; }
+
+  /* ===== Focus rings ===== */
+  :focus{ outline:none; }
+  button:focus-visible,
+  a:focus-visible,
+  [tabindex]:focus-visible,
+  .item-card:focus-visible,
+  .nav-btn:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+    border-radius:8px;
+  }
+  input:focus-visible, select:focus-visible{
+    outline:none; /* already has its own box-shadow ring */
+  }
 
   /* ===== Mobile cart drawer + FAB (hidden on desktop) ===== */
   .cart-fab{
@@ -431,7 +486,7 @@
     left:14px; right:14px;
     bottom: calc(72px + env(safe-area-inset-bottom));
     z-index:85;
-    background:var(--ink);
+    background:#2B1B12;
     color:#F5EFE4;
     border:none;
     border-radius:14px;
@@ -634,6 +689,50 @@
   body.confirm-open .confirm-backdrop{ display:block; }
   body.confirm-open .confirm-modal{ display:block; }
 
+  /* ===== Onboarding welcome modal ===== */
+  .onboard-backdrop{
+    display:none; position:fixed; inset:0;
+    background:rgba(43,27,18,0.6); z-index:130;
+  }
+  .onboard-modal{
+    display:none;
+    position:fixed; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    width:min(420px, calc(100vw - 32px));
+    max-height:88vh;
+    overflow-y:auto;
+    background:var(--surface);
+    border-radius:18px;
+    box-shadow:var(--shadow-lg);
+    padding:28px 26px;
+    z-index:131;
+    text-align:center;
+  }
+  body.onboard-open .onboard-backdrop{ display:block; }
+  body.onboard-open .onboard-modal{ display:block; }
+  .onboard-mark{
+    width:56px; height:56px; margin:0 auto 16px auto;
+    border-radius:14px;
+    background:var(--accent);
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 16px rgba(184,118,62,0.35);
+  }
+  .onboard-mark svg{ width:28px; height:28px; }
+  .onboard-modal h3{ margin:0 0 6px 0; font-size:20px; font-family:'Fraunces',serif; }
+  .onboard-modal > p{ margin:0 0 20px 0; font-size:13.5px; color:var(--ink-soft); }
+  .onboard-steps{ display:flex; flex-direction:column; gap:14px; margin-bottom:22px; text-align:left; }
+  .onboard-step{ display:flex; gap:12px; align-items:flex-start; }
+  .onboard-step div{ font-size:13px; color:var(--ink-soft); line-height:1.5; }
+  .onboard-step strong{ color:var(--ink); font-size:13.5px; }
+  .onboard-num{
+    flex-shrink:0;
+    width:26px; height:26px; border-radius:50%;
+    background:var(--accent-tint); color:var(--accent-dark);
+    font-weight:700; font-size:13px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
   .held-modal-head{
     display:flex; align-items:center; justify-content:space-between;
     padding:16px 18px;
@@ -732,6 +831,7 @@
       min-width:0;
     }
     .nav-btn .ic{ font-size:19px; width:auto; }
+    .nav-btn .ic svg{ width:21px; height:21px; }
     .nav-btn .lbl-full{ display:none; }
     .nav-btn .lbl-short{
       display:block;
@@ -762,7 +862,7 @@
     .cart-panel{
       position:fixed; left:0; right:0;
       bottom: calc(64px + env(safe-area-inset-bottom));
-      max-height:74vh;
+      max-height:88vh;
       border-radius:20px 20px 0 0;
       z-index:90;
       transform:translateY(calc(100% + 30px));
@@ -771,7 +871,16 @@
     body.cart-open .cart-panel{ transform:translateY(0); }
     body.cart-open .cart-backdrop{ display:block; }
     .cart-close{ display:flex; }
-    .cart-items{ max-height:32vh; }
+    #cartViewToggleBtn{ display:none; }
+    .cart-scroll-wrap{
+      display:block;
+      flex:1 1 auto;
+      min-height:0;
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    .cart-items{ max-height:none; overflow:visible; flex:none; }
+    .cart-totals{ overflow:visible; max-height:none; }
     .cart-backdrop{
       bottom: calc(64px + env(safe-area-inset-bottom));
       top:0; left:0; right:0;
@@ -843,6 +952,7 @@
   @media (max-width: 380px){
     .metrics{ grid-template-columns:1fr; }
     .nav-btn .ic{ font-size:17px; }
+    .nav-btn .ic svg{ width:18px; height:18px; }
     .nav-btn .lbl-short{ font-size:9px; }
     .nav-btn{ padding:6px 1px; }
   }
@@ -853,18 +963,18 @@
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark">☕</div>
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9Z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17"/><line x1="7" y1="2" x2="7" y2="5"/><line x1="11" y1="2" x2="11" y2="5"/></svg></div>
       <div class="brand-text">
         <div class="name" id="brandName">We Chai</div>
         <div class="sub">Front of House</div>
       </div>
     </div>
     <nav class="nav">
-      <button class="nav-btn active" data-view="pos"><span class="ic">🧾</span><span class="lbl lbl-full">Billing</span><span class="lbl lbl-short">Billing</span></button>
-      <button class="nav-btn" data-view="menu"><span class="ic">🍽️</span><span class="lbl lbl-full">Menu Editor</span><span class="lbl lbl-short">Menu</span></button>
-      <button class="nav-btn" data-view="report"><span class="ic">📊</span><span class="lbl lbl-full">Sales Report</span><span class="lbl lbl-short">Reports</span></button>
-      <button class="nav-btn" data-view="expenses"><span class="ic">💵</span><span class="lbl lbl-full">Expenses</span><span class="lbl lbl-short">Expenses</span></button>
-      <button class="nav-btn" data-view="settings"><span class="ic">⚙️</span><span class="lbl lbl-full">Settings</span><span class="lbl lbl-short">Settings</span></button>
+      <button class="nav-btn active" data-view="pos"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2Z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></span><span class="lbl lbl-full">Billing</span><span class="lbl lbl-short">Billing</span></button>
+      <button class="nav-btn" data-view="menu"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 1 1 2.8 2.8L12 14l-4 1 1-4 9.4-9.4Z"/></svg></span><span class="lbl lbl-full">Menu Editor</span><span class="lbl lbl-short">Menu</span></button>
+      <button class="nav-btn" data-view="report"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><line x1="8" y1="20" x2="8" y2="10"/><line x1="13" y1="20" x2="13" y2="5"/><line x1="18" y1="20" x2="18" y2="14"/></svg></span><span class="lbl lbl-full">Sales Report</span><span class="lbl lbl-short">Reports</span></button>
+      <button class="nav-btn" data-view="expenses"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H6a2 2 0 0 1 0-4h11a1 1 0 0 1 1 1v3Z"/><path d="M4 7v11a2 2 0 0 0 2 2h13a1 1 0 0 0 1-1v-4"/><rect x="15" y="10" width="6" height="5" rx="1"/></svg></span><span class="lbl lbl-full">Expenses</span><span class="lbl lbl-short">Expenses</span></button>
+      <button class="nav-btn" data-view="settings"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span><span class="lbl lbl-full">Settings</span><span class="lbl lbl-short">Settings</span></button>
     </nav>
     <div class="sidebar-foot">Data saved locally in this browser.</div>
   </aside>
@@ -897,27 +1007,29 @@
             </div>
           </div>
           <div class="cart-summary-line" id="cartSummaryLine"></div>
-          <div class="cart-items" id="cartItems"></div>
-          <div class="cart-totals">
-            <div class="tot-row">
-              <span>Subtotal</span>
-              <span class="mono" id="sumSubtotal">₹0.00</span>
+          <div class="cart-scroll-wrap" id="cartScrollWrap">
+            <div class="cart-items" id="cartItems"></div>
+            <div class="cart-totals">
+              <div class="tot-row">
+                <span>Subtotal</span>
+                <span class="mono" id="sumSubtotal">₹0.00</span>
+              </div>
+              <div class="tot-row">
+                <span>Discount (%)</span>
+                <input type="number" id="discountInput" min="0" max="100" value="0" step="1">
+              </div>
+              <div class="tot-row">
+                <span>Tax (%)</span>
+                <input type="number" id="taxInput" min="0" max="100" value="0" step="1">
+              </div>
+              <div class="tot-row grand">
+                <span>Total</span>
+                <span class="mono" id="sumTotal">₹0.00</span>
+              </div>
+              <button class="btn btn-sage btn-block" id="checkoutBtn" style="margin-top:8px;">Charge &amp; Save Order</button>
+              <button class="btn btn-ghost btn-block" id="printBillBtn" style="margin-top:8px;">🖨️ Print Bill / Preview</button>
+              <button class="btn btn-ghost btn-block" id="holdOrderBtn" style="margin-top:8px;">🕓 Hold This Order</button>
             </div>
-            <div class="tot-row">
-              <span>Discount (%)</span>
-              <input type="number" id="discountInput" min="0" max="100" value="0" step="1">
-            </div>
-            <div class="tot-row">
-              <span>Tax (%)</span>
-              <input type="number" id="taxInput" min="0" max="100" value="0" step="1">
-            </div>
-            <div class="tot-row grand">
-              <span>Total</span>
-              <span class="mono" id="sumTotal">₹0.00</span>
-            </div>
-            <button class="btn btn-sage btn-block" id="checkoutBtn" style="margin-top:8px;">Charge &amp; Save Order</button>
-            <button class="btn btn-ghost btn-block" id="printBillBtn" style="margin-top:8px;">🖨️ Print Bill / Preview</button>
-            <button class="btn btn-ghost btn-block" id="holdOrderBtn" style="margin-top:8px;">🕓 Hold This Order</button>
           </div>
         </div>
       </div>
@@ -1029,6 +1141,14 @@
         <div class="card metric-card accent" style="grid-column: span 2;">
           <div class="lbl">Best Seller</div>
           <div class="val" id="metricBestSeller" style="font-size:20px;">—</div>
+        </div>
+      </div>
+
+      <div class="card pad-lg" style="margin-top:16px;">
+        <h2 style="font-size:15px;margin:0 0 14px 0;">Revenue trend (selected range)</h2>
+        <div style="position:relative; height:220px;">
+          <canvas id="revenueTrendChart"></canvas>
+          <div class="empty-note" id="revenueTrendEmpty" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center;">No orders in this range.</div>
         </div>
       </div>
 
@@ -1279,6 +1399,17 @@
       </div>
 
       <div class="card pad-lg" style="margin-bottom:20px; max-width:520px;">
+        <h2 style="font-size:15px;margin:0 0 6px 0;">Theme</h2>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 16px 0; line-height:1.5;">
+          Switch between a light or dark look for the whole app.
+        </p>
+        <div class="fs-options" id="themeOptions">
+          <button data-theme="light">☀ Light</button>
+          <button data-theme="dark">● Dark</button>
+        </div>
+      </div>
+
+      <div class="card pad-lg" style="margin-bottom:20px; max-width:520px;">
         <h2 style="font-size:15px;margin:0 0 6px 0;">Shop details</h2>
         <p style="font-size:13px; color:var(--ink-soft); margin:0 0 16px 0; line-height:1.5;">
           This name appears in the sidebar and on every printed or saved bill.
@@ -1323,7 +1454,7 @@
 
 <div class="cart-backdrop" id="cartBackdrop"></div>
 <button class="cart-fab" id="cartFab">
-  <span class="fab-left">🧾 <span id="fabCount">0 items</span></span>
+  <span class="fab-left"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="18" cy="21" r="1"/><path d="M2.5 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.6L21 8H6"/></svg> <span id="fabCount">0 items</span></span>
   <span class="fab-total mono" id="fabTotal">₹0.00</span>
 </button>
 
@@ -1373,6 +1504,28 @@
     <button class="btn btn-ghost btn-block" id="confirmCancelBtn">Cancel</button>
     <button class="btn btn-danger btn-block" id="confirmOkBtn">Confirm</button>
   </div>
+</div>
+
+<div class="onboard-backdrop" id="onboardBackdrop"></div>
+<div class="onboard-modal" id="onboardModal">
+  <div class="onboard-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9Z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17"/><line x1="7" y1="2" x2="7" y2="5"/><line x1="11" y1="2" x2="11" y2="5"/></svg></div>
+  <h3>Welcome to We Chai POS</h3>
+  <p>A quick 3-step tour before your first sale:</p>
+  <div class="onboard-steps">
+    <div class="onboard-step">
+      <span class="onboard-num">1</span>
+      <div><strong>Set up your menu</strong><br>Add categories and items in the Menu Editor tab.</div>
+    </div>
+    <div class="onboard-step">
+      <span class="onboard-num">2</span>
+      <div><strong>Take your first order</strong><br>Tap items on the Billing screen to build a bill, then Charge.</div>
+    </div>
+    <div class="onboard-step">
+      <span class="onboard-num">3</span>
+      <div><strong>Check your reports</strong><br>Revenue, best sellers, and expenses all live in Sales Report &amp; Expenses.</div>
+    </div>
+  </div>
+  <button class="btn btn-primary btn-block" id="onboardStartBtn">Let's go</button>
 </div>
 
 <script>
@@ -1444,6 +1597,39 @@ function orderId(){ return 'ORD-' + Date.now().toString(36).toUpperCase(); }
 
 function money(n){
   return '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* ---------- animated metric counters ---------- */
+const animFrames = new WeakMap();
+
+function animateValue(el, endValue, formatFn, duration){
+  if(!el) return;
+  duration = duration || 600;
+  const startValue = parseFloat(el.dataset.rawValue);
+  const from = isNaN(startValue) ? 0 : startValue;
+  el.dataset.rawValue = endValue;
+
+  const existing = animFrames.get(el);
+  if(existing) cancelAnimationFrame(existing);
+
+  if(from === endValue){
+    el.textContent = formatFn(endValue);
+    return;
+  }
+
+  const startTime = performance.now();
+  function step(now){
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    const current = from + (endValue - from) * eased;
+    el.textContent = formatFn(current);
+    if(progress < 1){
+      animFrames.set(el, requestAnimationFrame(step));
+    } else {
+      animFrames.delete(el);
+    }
+  }
+  animFrames.set(el, requestAnimationFrame(step));
 }
 
 /* ---------- toast ---------- */
@@ -1531,6 +1717,13 @@ document.getElementById('collapseAllBtn').addEventListener('click', () => {
   renderPosMenu();
 });
 
+const CATEGORY_PALETTE = ['#B8763E', '#6E7C58', '#A2453B', '#5C7FA6', '#8C6BA8', '#4F8A78', '#B8934A', '#A65A7E'];
+function categoryColor(catName){
+  let hash = 0;
+  for(let i = 0; i < catName.length; i++){ hash = (hash * 31 + catName.charCodeAt(i)) >>> 0; }
+  return CATEGORY_PALETTE[hash % CATEGORY_PALETTE.length];
+}
+
 function renderPosMenu(){
   const wrap = document.getElementById('posMenu');
   wrap.innerHTML = '';
@@ -1545,13 +1738,14 @@ function renderPosMenu(){
     if(catItems.length === 0) return;
 
     const isCollapsed = collapsedCats.has(cat);
+    const catColor = categoryColor(cat);
 
     const block = document.createElement('div');
     block.className = 'cat-block' + (isCollapsed ? ' collapsed' : '');
 
     const title = document.createElement('button');
     title.className = 'cat-title';
-    title.innerHTML = `<span class="chev">▾</span>${escapeHtml(cat)}<span class="cat-count">${catItems.length}</span>`;
+    title.innerHTML = `<span class="chev">▾</span><span class="cat-dot" style="background:${catColor};"></span>${escapeHtml(cat)}<span class="cat-count">${catItems.length}</span>`;
     title.addEventListener('click', () => toggleCategory(cat));
     block.appendChild(title);
 
@@ -1560,8 +1754,9 @@ function renderPosMenu(){
     catItems.forEach(it => {
       const card = document.createElement('button');
       card.className = 'item-card';
+      card.style.setProperty('--cat-color', catColor);
       card.innerHTML = `<span class="nm">${escapeHtml(it.name)}</span><span class="pr mono">${money(it.price)}</span>`;
-      card.addEventListener('click', () => addToCart(it));
+      card.addEventListener('click', (e) => addToCart(it, e.currentTarget));
       grid.appendChild(card);
     });
     block.appendChild(grid);
@@ -1573,7 +1768,7 @@ function renderPosMenu(){
   }
 }
 
-function addToCart(item){
+function addToCart(item, cardEl){
   const existing = cart.find(c => c.itemId === item.id);
   if(existing){
     existing.qty += 1;
@@ -1581,6 +1776,13 @@ function addToCart(item){
     cart.push({ itemId: item.id, name: item.name, price: item.price, qty: 1 });
   }
   renderCart();
+
+  if(cardEl){
+    cardEl.classList.remove('pulse');
+    void cardEl.offsetWidth; // restart animation if clicked again quickly
+    cardEl.classList.add('pulse');
+    setTimeout(() => cardEl.classList.remove('pulse'), 450);
+  }
 }
 
 function changeQty(itemId, delta){
@@ -1692,7 +1894,12 @@ document.getElementById('cartViewToggleBtn').addEventListener('click', () => {
 document.getElementById('cartSummaryLine').addEventListener('click', () => applyCartView('expanded'));
 
 /* ---------- mobile cart drawer ---------- */
-function openCartDrawer(){ document.body.classList.add('cart-open'); }
+function openCartDrawer(){
+  document.body.classList.add('cart-open');
+  // On mobile the drawer is the only place items are visible — always show
+  // the full list here regardless of a "minimized" preference set elsewhere.
+  document.getElementById('cartPanel').classList.remove('minimized');
+}
 function closeCartDrawer(){ document.body.classList.remove('cart-open'); }
 
 document.getElementById('cartFab').addEventListener('click', openCartDrawer);
@@ -2390,10 +2597,10 @@ function renderExpenseReport(){
   const revenue = getRevenueForRange(expenseFilter.start, expenseFilter.end);
   const profit = revenue - total;
 
-  document.getElementById('expMetricTotal').textContent = money(total);
-  document.getElementById('expMetricCount').textContent = count.toLocaleString('en-IN');
-  document.getElementById('expMetricAvg').textContent = money(avg);
-  document.getElementById('expMetricProfit').textContent = money(profit);
+  animateValue(document.getElementById('expMetricTotal'), total, money);
+  animateValue(document.getElementById('expMetricCount'), count, (v) => Math.round(v).toLocaleString('en-IN'));
+  animateValue(document.getElementById('expMetricAvg'), avg, money);
+  animateValue(document.getElementById('expMetricProfit'), profit, money);
 
   renderExpenseCategorySummaryTable(filtered);
 }
@@ -2654,6 +2861,103 @@ document.getElementById('expCollapseAllBtn').addEventListener('click', () => {
   applyReportSectionStates();
 });
 
+/* ---------- revenue trend chart ---------- */
+let revenueChartInstance = null;
+
+function computeDailyRevenue(filtered){
+  const map = {};
+  filtered.forEach(tx => {
+    const day = tx.datetime.slice(0, 10);
+    map[day] = (map[day] || 0) + tx.total;
+  });
+  const days = Object.keys(map).sort();
+  return {
+    labels: days.map(d => {
+      const dt = new Date(d + 'T00:00:00');
+      return dt.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+    }),
+    data: days.map(d => round2(map[d]))
+  };
+}
+
+function getCssVar(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+function updateRevenueChart(filtered){
+  const canvas = document.getElementById('revenueTrendChart');
+  const emptyEl = document.getElementById('revenueTrendEmpty');
+  if(!canvas || typeof Chart === 'undefined') return;
+
+  const { labels, data } = computeDailyRevenue(filtered);
+
+  if(labels.length === 0){
+    emptyEl.style.display = 'flex';
+    canvas.style.display = 'none';
+    if(revenueChartInstance){ revenueChartInstance.destroy(); revenueChartInstance = null; }
+    return;
+  }
+  emptyEl.style.display = 'none';
+  canvas.style.display = 'block';
+
+  const accent = getCssVar('--accent') || '#B8763E';
+  const inkSoft = getCssVar('--ink-soft') || '#7A6753';
+  const border = getCssVar('--border') || '#E5D8C4';
+  const accentTint = accent + '2A';
+
+  if(revenueChartInstance){
+    revenueChartInstance.data.labels = labels;
+    revenueChartInstance.data.datasets[0].data = data;
+    revenueChartInstance.data.datasets[0].borderColor = accent;
+    revenueChartInstance.data.datasets[0].backgroundColor = accentTint;
+    revenueChartInstance.data.datasets[0].pointBackgroundColor = accent;
+    revenueChartInstance.options.scales.x.ticks.color = inkSoft;
+    revenueChartInstance.options.scales.y.ticks.color = inkSoft;
+    revenueChartInstance.options.scales.x.grid.color = border;
+    revenueChartInstance.options.scales.y.grid.color = border;
+    revenueChartInstance.update();
+    return;
+  }
+
+  try {
+    const ctx = canvas.getContext('2d');
+    revenueChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Revenue',
+          data,
+          borderColor: accent,
+          backgroundColor: accentTint,
+          pointBackgroundColor: accent,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2.5,
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (c) => money(c.parsed.y) } }
+        },
+        scales: {
+          x: { ticks: { color: inkSoft, font: { size: 11 } }, grid: { color: border, drawTicks: false } },
+          y: {
+            beginAtZero: true,
+            ticks: { color: inkSoft, font: { size: 11 }, callback: (v) => '₹' + v },
+            grid: { color: border, drawTicks: false }
+          }
+        }
+      }
+    });
+  } catch(err){}
+}
+
 function renderReport(){
   const filtered = getFilteredTransactions();
 
@@ -2686,16 +2990,17 @@ function renderReport(){
     bestSellerText = `${name} (${qty} sold)`;
   }
 
-  document.getElementById('metricRevenue').textContent = money(revenue);
-  document.getElementById('metricOrders').textContent = orderCount.toLocaleString('en-IN');
-  document.getElementById('metricAvg').textContent = money(avg);
-  document.getElementById('metricItemsSold').textContent = itemsSold.toLocaleString('en-IN');
-  document.getElementById('metricDiscount').textContent = money(totalDiscount);
-  document.getElementById('metricTax').textContent = money(totalTax);
+  animateValue(document.getElementById('metricRevenue'), revenue, money);
+  animateValue(document.getElementById('metricOrders'), orderCount, (v) => Math.round(v).toLocaleString('en-IN'));
+  animateValue(document.getElementById('metricAvg'), avg, money);
+  animateValue(document.getElementById('metricItemsSold'), itemsSold, (v) => Math.round(v).toLocaleString('en-IN'));
+  animateValue(document.getElementById('metricDiscount'), totalDiscount, money);
+  animateValue(document.getElementById('metricTax'), totalTax, money);
   document.getElementById('metricBestSeller').textContent = bestSellerText;
 
   renderItemSummaryTable(filtered);
   renderCategorySummaryTable(filtered);
+  updateRevenueChart(filtered);
 
   const body = document.getElementById('reportTableBody');
   body.innerHTML = '';
@@ -2928,10 +3233,56 @@ document.querySelectorAll('#printWidthOptions button').forEach(btn => {
   btn.addEventListener('click', () => applyPrintWidth(btn.dataset.width));
 });
 
+/* ---------- theme (light / dark) ---------- */
+const LS_THEME = 'cafe_theme';
+
+function applyTheme(theme){
+  document.body.classList.toggle('dark-mode', theme === 'dark');
+  localStorage.setItem(LS_THEME, theme);
+  document.querySelectorAll('#themeOptions button').forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === theme);
+  });
+  document.querySelector('meta[name="theme-color"]').setAttribute(
+    'content', theme === 'dark' ? '#1B140F' : '#2B1B12'
+  );
+}
+
+function loadTheme(){
+  const saved = localStorage.getItem(LS_THEME);
+  applyTheme(saved || 'light');
+}
+
+document.querySelectorAll('#themeOptions button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    applyTheme(btn.dataset.theme);
+    updateRevenueChart(getFilteredTransactions());
+  });
+});
+
+/* =========================================================
+   INIT
+   ========================================================= */
+/* ---------- first-run onboarding ---------- */
+const LS_ONBOARDED = 'cafe_onboarded';
+
+function maybeShowOnboarding(){
+  if(localStorage.getItem(LS_ONBOARDED)) return;
+  document.body.classList.add('onboard-open');
+}
+
+function dismissOnboarding(){
+  localStorage.setItem(LS_ONBOARDED, '1');
+  document.body.classList.remove('onboard-open');
+}
+
+document.getElementById('onboardStartBtn').addEventListener('click', dismissOnboarding);
+document.getElementById('onboardBackdrop').addEventListener('click', dismissOnboarding);
+
 /* =========================================================
    INIT
    ========================================================= */
 window.onload = function(){
+  loadTheme();
   loadData();
   loadShopName();
   loadFontScale();
@@ -2949,6 +3300,7 @@ window.onload = function(){
   renderMenuEditor();
   renderReport();
   renderExpensesView();
+  maybeShowOnboarding();
 };
 </script>
 </body>
