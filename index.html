@@ -266,7 +266,7 @@
   .cat-block.collapsed .cat-title .chev{ transform:rotate(-90deg); }
   .cat-block .item-grid{
     overflow:hidden;
-    max-height:2000px;
+    max-height:20000px;
     transition:max-height .3s ease, opacity .25s ease, margin .25s ease;
     opacity:1;
   }
@@ -424,13 +424,17 @@
   .report-section.collapsed .report-section-header .chev{ transform:rotate(-90deg); }
   .report-section.collapsed .report-section-header{ margin-bottom:0; }
   .report-section-body{
-    overflow:hidden;
-    max-height:4000px;
-    transition:max-height .3s ease, opacity .25s ease;
+    display:grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows .3s ease, opacity .25s ease;
     opacity:1;
   }
+  .report-section-body > .report-section-inner{
+    overflow:hidden;
+    min-height:0;
+  }
   .report-section.collapsed .report-section-body{
-    max-height:0;
+    grid-template-rows: 0fr;
     opacity:0;
   }
   .report-summary-grid .card{ margin-bottom:0 !important; }
